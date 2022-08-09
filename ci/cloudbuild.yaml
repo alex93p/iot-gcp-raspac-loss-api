@@ -1,6 +1,6 @@
 steps:
   # get secret .env
-  - id: Get_Secret_ENV
+  - id: Secrets
     name: gcr.io/cloud-builders/gcloud
     entrypoint: bash
     args: ['-c', "gcloud secrets versions access latest --secret=$_ENV --format='get(payload.data)' | tr '_-' '/+' | base64 -d > .env"]
