@@ -1,0 +1,55 @@
+steps:
+  # get secret .env
+  - id: Get_Secret_ENV
+    name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
+    args: ['-c', "gcloud secrets versions access latest --secret=$_ENV --format='get(payload.data)' | tr '_-' '/+' | base64 -d > .env"]
+  # build image
+  - id: Build
+    name: gcr.io/cloud-builders/docker
+    dir: $_DOCKERFILE_DIR
+    args:
+      - build
+      - '-t'
+      - '$_IMAGE_NAME:$TAG_NAME'
+      - .
+      - '-f'
+      - $_DOCKERFILE_NAME
+  # push artifacts
+  - id: Push
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - '$_IMAGE_NAME:$TAG_NAME'
+  # deploy new revision
+  - id: Deploy
+    entrypoint: gcloud
+    name: gcr.io/cloud-builders/gcloud
+    args:
+      - run
+      - deploy
+      - $_SERVICE_NAME
+      - '--concurrency=$_CONCURRENCY'
+      - '--cpu=$_CPU'
+      - '--image=$_IMAGE_NAME:$TAG_NAME'
+      - '--ingress=$_INGRESS'
+      - '$_TRAFFIC_ALLOW_POLICY'
+      - '--max-instances=$_MAX_INSTANCES'
+      - '--memory=$_MEMORY'
+      - '--min-instances=$_MIN_INSTANCES'
+      - '--platform=managed'
+      - '--port=$_PORT'
+      - '--quiet'
+      - '--region=$_DEPLOY_REGION'
+      - '--service-account=$_SERVICE_ACCOUNT_NAME'
+      - '--timeout=$_TIMEOUT'
+      - '--clear-secrets'
+      - >-
+        --labels=managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID
+timeout: 1800s
+options:
+  substitutionOption: ALLOW_LOOSE
+substitutions: {}
+tags:
+  - $_SERVICE_NAME
+  - $_ENVIRONMENT
